@@ -4,7 +4,7 @@ name: Build S4Mur4i QA APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -17,10 +17,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
+      - name: Locate and extract project ZIP
         run: |
-          unzip -q S4Mur4i_QA_Starter.zip -d source
-          test -f source/S4Mur4i_QA_Starter/app/build.gradle.kts
+          ZIP=$(find . -type f -iname 'S4Mur4i_QA_Starter.zip' -print -quit)
+          if [ -z "$ZIP" ]; then
+            echo "Project ZIP not found."
+            echo "Repository files:"
+            find . -maxdepth 4 -type f
+            exit 1
+          fi
+          mkdir source
+          unzip -q "$ZIP" -d source
+
+      - name: Locate project folder
+        run: |
+          PROJECT=$(find source -name settings.gradle.kts -printf '%h\n' -quit)
+          if [ -z "$PROJECT" ]; then
+            echo "Gradle project not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT" >> "$GITHUB_ENV"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -36,19 +52,15 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
-        run: |
-          cd source/S4Mur4i_QA_Starter
-          gradle :app:assembleDebug
+        run: gradle -p "$PROJECT_DIR" :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: S4Mur4i-QA-debug-apk
-          path: source/S4Mur4i_QA_Starter/app/build/outputs/apk/debug/app-debug.apk
+          path: source/**/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          
