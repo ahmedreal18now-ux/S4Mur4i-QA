@@ -21,15 +21,14 @@ jobs:
         run: |
           ZIP=$(find . -type f -iname 'S4Mur4i_QA_Starter.zip' -print -quit)
           if [ -z "$ZIP" ]; then
-            echo "Project ZIP not found."
-            echo "Repository files:"
+            echo "Project ZIP not found"
             find . -maxdepth 4 -type f
             exit 1
           fi
           mkdir source
           unzip -q "$ZIP" -d source
 
-      - name: Locate project folder
+      - name: Locate project
         run: |
           PROJECT=$(find source -name settings.gradle.kts -printf '%h\n' -quit)
           if [ -z "$PROJECT" ]; then
@@ -50,13 +49,19 @@ jobs:
           gradle-version: "8.9"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: "15859902"
+          accept-android-sdk-licenses: true
+          packages: platform-tools
 
-      - name: Install SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
-        run: gradle -p "$PROJECT_DIR" :app:assembleDebug
+        run: |
+          gradle -p "$PROJECT_DIR" :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
